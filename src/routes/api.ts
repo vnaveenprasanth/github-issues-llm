@@ -46,17 +46,41 @@ router.post('/scan', async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('❌ Scan error:', error.message);
 
+        // Handle timeout
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+            return res.status(504).json({
+                error: 'Request timeout',
+                message: 'GitHub API took too long to respond. Try again later.',
+            });
+        }
+
         // Handle GitHub API errors
         if (error.response?.status === 404) {
             return res.status(404).json({
                 error: 'Repository not found',
-                repo: req.body.repo
+                repo: req.body.repo,
+                hint: 'Check if the repository exists and is spelled correctly'
+            });
+        }
+
+        if (error.response?.status === 401) {
+            return res.status(401).json({
+                error: 'Authentication failed',
+                message: 'Invalid or expired GitHub token. Check your GITHUB_TOKEN.',
             });
         }
 
         if (error.response?.status === 403) {
+            const rateLimitRemaining = error.response?.headers?.['x-ratelimit-remaining'];
+            const isRateLimit = rateLimitRemaining === '0';
+
             return res.status(403).json({
-                error: 'GitHub API rate limit exceeded. Try again later or add GITHUB_TOKEN.',
+                error: isRateLimit
+                    ? 'GitHub API rate limit exceeded'
+                    : 'Access forbidden - repository may be private',
+                hint: isRateLimit
+                    ? 'Wait an hour or add GITHUB_TOKEN for higher limits (5000/hr)'
+                    : 'Add a GITHUB_TOKEN with repo access to scan private repos',
             });
         }
 
@@ -90,6 +114,23 @@ router.post('/analyze', async (req: Request, res: Response) => {
             });
         }
 
+        // Validate prompt is not empty or too short
+        const trimmedPrompt = prompt.trim();
+        if (trimmedPrompt.length < 5) {
+            return res.status(400).json({
+                error: 'Prompt is too short',
+                hint: 'Please provide a meaningful prompt (at least 5 characters)',
+            });
+        }
+
+        // Validate prompt length (prevent abuse)
+        if (trimmedPrompt.length > 5000) {
+            return res.status(400).json({
+                error: 'Prompt is too long',
+                hint: 'Please keep your prompt under 5000 characters',
+            });
+        }
+
         // Check if repo has been scanned
         const hasCachedIssues = await hasIssues(repo);
         if (!hasCachedIssues) {
@@ -113,7 +154,7 @@ router.post('/analyze', async (req: Request, res: Response) => {
 
         // Analyze with LLM
         const { analyzeIssues } = await import('../llm/analyzer');
-        const analysis = await analyzeIssues(issues, prompt);
+        const analysis = await analyzeIssues(issues, trimmedPrompt);
 
         console.log(`✅ Analysis complete for ${repo}`);
 
@@ -123,10 +164,26 @@ router.post('/analyze', async (req: Request, res: Response) => {
         console.error('❌ Analysis error:', error.message);
 
         // Handle Gemini API errors
-        if (error.message?.includes('API key')) {
+        if (error.message?.includes('API key') || error.message?.includes('API_KEY')) {
             return res.status(500).json({
                 error: 'Gemini API key is missing or invalid',
                 hint: 'Set GEMINI_API_KEY environment variable'
+            });
+        }
+
+        // Handle rate limiting (429)
+        if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('quota')) {
+            return res.status(429).json({
+                error: 'Gemini API rate limit exceeded',
+                hint: 'Wait a minute and try again, or upgrade your API plan',
+            });
+        }
+
+        // Handle content safety blocks
+        if (error.message?.includes('SAFETY') || error.message?.includes('blocked')) {
+            return res.status(400).json({
+                error: 'Content was blocked by safety filters',
+                hint: 'Try rephrasing your prompt or the issues may contain flagged content',
             });
         }
 

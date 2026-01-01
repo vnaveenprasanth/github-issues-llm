@@ -61,6 +61,7 @@ export async function fetchOpenIssues(repo: string): Promise<NewIssue[]> {
 
         const response = await axios.get<GitHubIssue[]>(url, {
             headers,
+            timeout: 30000, // 30 second timeout
             params: {
                 state: 'open',
                 per_page: PER_PAGE,
