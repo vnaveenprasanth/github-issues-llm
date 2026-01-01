@@ -19,11 +19,8 @@ npm install
 
 ### 2. Configure environment
 
-```bash
-cp .env.example .env
-```
 
-Edit `.env` and add your API keys:
+Add `.env` and add your API keys:
 
 ```env
 # Required: Get from https://aistudio.google.com/apikey
@@ -97,6 +94,7 @@ I chose **SQLite** with Drizzle ORM for the following reasons:
 2. **Performance** - Fast queries with indexed lookups by repo
 3. **Simplicity** - Zero configuration, single file database
 4. **Type Safety** - Drizzle ORM provides TypeScript types for all queries
+Also I have had prior experience using this with Ruby on Rails and Android Apps, I was able to use SQLite for local storage there and dev purposes.
 
 Alternatives considered as per requirement document:
 - **In-memory**: Too volatile, loses data on restart
