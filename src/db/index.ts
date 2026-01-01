@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import Database, { Database as DatabaseType } from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 import path from 'path';
@@ -7,7 +7,7 @@ import path from 'path';
 const DB_PATH = path.join(process.cwd(), 'issues.db');
 
 // Create SQLite database connection
-const sqlite = new Database(DB_PATH);
+const sqlite: DatabaseType = new Database(DB_PATH);
 
 // Create Drizzle ORM instance
 export const db = drizzle(sqlite, { schema });
