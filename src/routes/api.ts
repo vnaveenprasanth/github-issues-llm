@@ -67,4 +67,74 @@ router.post('/scan', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * POST /analyze
+ * Analyze cached issues for a repo using LLM
+ */
+router.post('/analyze', async (req: Request, res: Response) => {
+    try {
+        const { repo, prompt } = req.body;
+
+        // Validate request
+        if (!repo) {
+            return res.status(400).json({
+                error: 'Missing required field: repo',
+                example: { repo: 'owner/repository-name', prompt: 'Analyze these issues' }
+            });
+        }
+
+        if (!prompt) {
+            return res.status(400).json({
+                error: 'Missing required field: prompt',
+                example: { repo: 'owner/repository-name', prompt: 'Find common themes and recommend priorities' }
+            });
+        }
+
+        // Check if repo has been scanned
+        const hasCachedIssues = await hasIssues(repo);
+        if (!hasCachedIssues) {
+            return res.status(404).json({
+                error: 'Repository has not been scanned yet',
+                repo,
+                hint: 'Please call POST /scan first to fetch and cache issues'
+            });
+        }
+
+        // Get cached issues
+        const issues = await getIssues(repo);
+
+        if (issues.length === 0) {
+            return res.json({
+                analysis: 'No open issues found in this repository. The repository appears to be well-maintained with no pending issues!'
+            });
+        }
+
+        console.log(`🤖 Analyzing ${issues.length} issues for ${repo}...`);
+
+        // Analyze with LLM
+        const { analyzeIssues } = await import('../llm/analyzer');
+        const analysis = await analyzeIssues(issues, prompt);
+
+        console.log(`✅ Analysis complete for ${repo}`);
+
+        return res.json({ analysis });
+
+    } catch (error: any) {
+        console.error('❌ Analysis error:', error.message);
+
+        // Handle Gemini API errors
+        if (error.message?.includes('API key')) {
+            return res.status(500).json({
+                error: 'Gemini API key is missing or invalid',
+                hint: 'Set GEMINI_API_KEY environment variable'
+            });
+        }
+
+        return res.status(500).json({
+            error: 'Failed to analyze issues',
+            message: error.message
+        });
+    }
+});
+
 export default router;
