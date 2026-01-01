@@ -139,3 +139,68 @@ npm run build  # Compile TypeScript to dist/
 npm start      # Run compiled production build
 ```
 
+---
+
+## AI Prompts Used During Development
+
+Below are the prompts I used while building this project with AI coding tools (Claude, Cursor, etc.). This documents my workflow and thought process.
+
+### Phase 1: Foundation & Architecture
+
+**1. Architecture & Stack Definition:**
+> "I want to build a GitHub Issue Analyzer.
+> Setup git, npm and typescript. Add express and other deps.
+> Use **Drizzle ORM** for the database instead of raw SQLite, and ensure cleaner file naming. Also, create a dedicated folder for LLM configurations."
+
+**2. Dependency Research & Correction:**
+> "I noticed that `@google/generative-ai` is deprecated. Please switch to using the newer **`@google/genai`** package for the implementation."
+
+**3. TypeScript Configuration:**
+> "Fix the TypeScript lint errors regarding `verbatimModuleSyntax` and module resolution.
+
+### Phase 2: Implementation & Logic Generation
+
+**4. Model Flexibility & Configuration:**
+> "Can we change the Gemini model version? Check if I can use **Gemini 2.5 Flash** or **Pro** versions, and make the configuration flexible."
+
+**5. Smart Token Management Implementation:**
+> "What happens if there are thousands of issues? Fixed chunk sizes might fail if issue bodies are long. Check the docs for `client.models.countTokens`—I want to implement **token-aware chunking** that dynamically sizes batches based on the actual token count, not just issue count."
+> *(Follow-up)*: "How will this help exactly and will this adapt to whatever models I change in code?"
+> *(Follow-up)*: "No, I'm asking if we implement countToken from API then do we need limit?"
+
+### Phase 3: Robustness, Security & Edge Cases
+
+**6. Edge Case Discovery:**
+> "Now look into and see what edge cases we have not handled in this current master branch."
+*(This Prompt led to the identification of network timeouts, specific 403 vs 404 handling, and better input validation.)*
+
+**7. Error Handling & Validation Implementation:**
+> "Do the important ones (timeout, rate limits, validation)."
+
+### Phase 4: Production & Deployment
+
+**8. Containerization Strategy:**
+> "Can we just create an image and use that in render and also set the env in render for GitHub PAT and Gemini key?"
+> "Create a Dockerfile for this project. Since we're using `better-sqlite3`,will docker usage create problems in setup"
+
+### LLM System Prompt (for /analyze endpoint)
+
+This is the actual system prompt used inside the service:
+
+```
+You are an expert software development analyst specializing in GitHub issue analysis.
+Your role is to help maintainers and developers understand patterns, prioritize work,
+and identify themes in their issue trackers.
+
+When analyzing issues, consider:
+- Common themes and recurring problems
+- Severity and potential impact
+- User sentiment and frustration levels
+- Dependencies between issues
+- Quick wins vs long-term projects
+
+Be concise but thorough. Use bullet points and clear structure.
+Focus on actionable insights that help maintainers make decisions.
+```
+
+---
