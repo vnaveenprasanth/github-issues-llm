@@ -118,7 +118,7 @@ function transformIssue(issue: GitHubIssue, repo: string): NewIssue {
 }
 
 /**
- * Check rate limit status
+ * Check rate limit status for the REST API (core)
  */
 export async function checkRateLimit(): Promise<{ remaining: number; limit: number; reset: Date }> {
     const token = process.env.GITHUB_TOKEN;
@@ -132,7 +132,8 @@ export async function checkRateLimit(): Promise<{ remaining: number; limit: numb
     }
 
     const response = await axios.get(`${GITHUB_API_BASE}/rate_limit`, { headers });
-    const { remaining, limit, reset } = response.data.rate;
+    
+    const { remaining, limit, reset } = response.data.resources.core;
 
     return {
         remaining,
