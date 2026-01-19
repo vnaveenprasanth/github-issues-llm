@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 /**
  * Save issues to the database for a specific repo
  * Clears existing issues for the repo before inserting new ones
+ * Uses batched inserts to avoid SQLite variable limits with large datasets
  */
 export async function saveIssues(repo: string, issueList: NewIssue[]): Promise<number> {
     // Clear existing issues for this repo
@@ -14,8 +15,17 @@ export async function saveIssues(repo: string, issueList: NewIssue[]): Promise<n
         return 0;
     }
 
-    // Insert new issues
-    db.insert(issues).values(issueList).run();
+    // Batch insert to avoid SQLite variable limit and stack overflow
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < issueList.length; i += BATCH_SIZE) {
+        const batch = issueList.slice(i, i + BATCH_SIZE);
+        db.insert(issues).values(batch).run();
+
+        // Log progress for large repos
+        if (issueList.length > 1000 && (i + BATCH_SIZE) % 2000 === 0) {
+            console.log(`   💾 Inserted ${Math.min(i + BATCH_SIZE, issueList.length)}/${issueList.length} issues...`);
+        }
+    }
 
     return issueList.length;
 }

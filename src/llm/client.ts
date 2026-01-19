@@ -33,6 +33,5 @@ export const LLM_CONFIG = {
  * Context limits for chunking
  */
 export const CONTEXT_LIMITS = {
-    maxIssuesPerChunk: 50,
-    maxBodyLength: 500,
+    maxIssuesPerChunk: 200,
 };

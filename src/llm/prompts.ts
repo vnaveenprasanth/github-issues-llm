@@ -30,9 +30,6 @@ export function buildAnalysisPrompt(
 Issue #${index + 1}:
 - Title: ${issue.title}
 - Labels: ${labels}
-- Created: ${issue.createdAt}
-- Comments: ${issue.comments}
-- Description: ${issue.body ? issue.body.slice(0, 500) : 'No description'}
 ---`;
     }).join('\n');
 
@@ -70,3 +67,8 @@ ${userPrompt}
 
 Please synthesize the above summaries into a comprehensive final analysis.`;
 }
+
+
+// - Created: ${issue.createdAt}
+// - Comments: ${issue.comments}
+// - Description: ${issue.body ? issue.body.slice(0, 500) : 'No description'}
